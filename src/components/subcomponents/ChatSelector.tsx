@@ -22,7 +22,7 @@ export default function ChatSelector(props: Props) {
     ws?.addEventListener('message', (message) => {
         const parsedMessage = JSON.parse(message.data)
         if (parsedMessage.type === 'displayConvo') {
-            updateMessages((_prev: any) => parsedMessage.data)
+            updateMessages((_prev) => parsedMessage.data)
         }
     });
 
