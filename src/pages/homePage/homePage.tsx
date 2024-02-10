@@ -9,7 +9,6 @@ const link = 'http://localhost:3000/check/register';
 export default function HomePage() {
 
     const navigate = useNavigate()
-
     const handleSubmit = (e: any) => {
         e.preventDefault()
         if (e.target.userName.value && !validationError) {

@@ -1,7 +1,7 @@
 import { useContext, useEffect, useState, useRef, useMemo } from "react"
 import { ChatContext } from "../../context/ChatContext"
 import { useParams } from "react-router-dom"
-import { SendChatHistory, SocketMessage, StoredMessage, requestMessageHistory, sendSocketMessage, confirmMessage } from "../../functions_and_classes/messageFunctionsAndClasses"
+import { SendChatHistory, SocketMessage, StoredMessage, requestMessageHistory, sendSocketMessage, confirmMessage, receiveMessage } from "../../functions_and_classes/messageFunctionsAndClasses"
 import { formatTime } from "../../functions_and_classes/messageFunctionsAndClasses"
 import useMessageUpdate from "../../hooks/useMessageUpdate"
 
@@ -17,26 +17,40 @@ export default function ChatSection(props: Props) {
     const ws: WebSocket | undefined = context?.ws
     const [latestMessage, setLatestMessage] = useState<StoredMessage | undefined>(undefined)
     const [showMessages] = useMessageUpdate(messages, latestMessage)
+    const prevProps = useRef<string | undefined>(undefined)
+
+
+
 
     useEffect(() => {
+        //only request list of convo if props change
         if (ws?.readyState) {
             requestMessageHistory(ws, props.convoID, params.username)
             setLatestMessage(undefined)
         }
+        prevProps.current = props.chattingWith;
     }, [props])
 
     //event listener to receive message history
     ws?.addEventListener('message', (message) => {
         const parsedMessage: SendChatHistory | confirmMessage = JSON.parse(message.data)
+        console.log(parsedMessage.type)
         if (parsedMessage.type === 'chatHistory') {
             //set messages as chat history
-            setMessages(parsedMessage.data)
+            const prevChattingWith = prevProps.current;
+            if (prevChattingWith && prevChattingWith !== props.chattingWith) {
+                setMessages(parsedMessage.data)
+            }
         }
         if (parsedMessage.type === 'confirmMessage') {
             if (parsedMessage.id === latestMessage?.id) {
                 //if ids match, and success:
                 if (parsedMessage.success) {
-                    setLatestMessage(undefined)
+                    const succeedLatestMessage = latestMessage || null
+                    if (succeedLatestMessage) {
+                        succeedLatestMessage.active = true
+                        setLatestMessage(succeedLatestMessage)
+                    }
                 }
                 else {
                     //set failed message, if failed latest message possibly inaccessable
@@ -48,6 +62,18 @@ export default function ChatSection(props: Props) {
                 }
             }
         }
+    })
+
+    //separate event listener for incoming message
+    ws?.addEventListener('message', (message) => {
+        const parsedMessage: SocketMessage = JSON.parse(message.data)
+        console.log(parsedMessage.type)
+        if (parsedMessage.type === 'incoming') {
+            //transform socketMessage to storedMessage
+            const newMessage: StoredMessage = receiveMessage(parsedMessage)
+            setLatestMessage(newMessage)
+        }
+
     })
 
     const submitMessage = (e: React.FormEvent<HTMLFormElement>) => {
@@ -62,20 +88,11 @@ export default function ChatSection(props: Props) {
 
     }
 
-    // type StoredMessage = {
-    //     datetime: Date;
-    //     id: string;
-    //     to: string;
-    //     from: string;
-    //     enabled: [string, string];
-    //     message: string;
-    // }
-
     return (
 
         <div className='text-[1rem] w-[60%] h-[70vh] flex flex-col justify-end px-4 border-l border-slate-600 ml-2 min-h[500px]'>
             <div className='flex justify-center mb-4'>
-                <p className='mr-4 text-[1.2rem]'>{`Your Id: ${params.username}`}</p>
+                <p className='mr-4 text-[1.2rem]'>{`Chatting With: ${props.chattingWith}`}</p>
             </div>
             <ul id='message-container' className='flex flex-col h-full border-b border-slate-600 justify-end overflow-y-scroll'>
                 {
@@ -89,7 +106,6 @@ export default function ChatSection(props: Props) {
                             )
                         }
                         else {
-
                             return (
                                 <li id='message-left' className='mb-4 text-left w-[65%]'>
                                     <p id='message' className='w-[55%]'>{message.message}</p>
@@ -100,15 +116,6 @@ export default function ChatSection(props: Props) {
                         }
                     })
                 }
-
-                <li id='message-left' className='mb-4 text-left w-[65%]'>
-                    <p id='message' className='w-[55%]'>Whats good</p>
-                    <span id='time-stamp' className='text-[11px]'>24 Jan 10:50</span>
-                </li>
-                <li id='message-right' className='mb-4 text-right self-end w-[65%]'>
-                    <p id='message' className=''>Whats good hope all is well and everthing is good</p>
-                    <span id='time-stamp' className='text-[11px]'>24 Jan 10:51</span>
-                </li>
             </ul>
             <p id='feedback' className='text-[12px] pt-2'>Someone is typing a message</p>
             <form className='w-[100%] flex my-2' id="message-form" onSubmit={submitMessage}>

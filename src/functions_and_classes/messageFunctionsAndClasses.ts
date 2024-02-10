@@ -84,6 +84,7 @@ export class StoredMessage {
     message: string;
     active?: boolean | undefined;
     failed?: boolean;
+    recipient?: boolean
     constructor(datetime: Date, id: string, to: string | undefined, from: string | undefined, enabled: [string | undefined, string | undefined], message: string) {
         this.datetime = datetime
         this.id = id,
@@ -92,6 +93,20 @@ export class StoredMessage {
             this.enabled = enabled,
             this.message = message
     }
+}
+export function receiveMessage (socketMessage: SocketMessage){
+    //socketmessage.username == he who sent the message, socketmessage.recipient === he who receives, he who is logged in
+    //this function returns a stored message given a socket message
+    let receivedMessage = new StoredMessage(
+        socketMessage.datetime,
+        socketMessage.id,
+        socketMessage.recipient,
+        socketMessage.username,
+        [socketMessage.username, socketMessage.recipient],
+        socketMessage.message
+    )
+    receivedMessage.recipient = true
+    return receivedMessage
 }
 
 export type SendChatHistory = {
