@@ -1,6 +1,6 @@
 // import './ChatPage.scss'
 import '../pageStyles.css'
-import { useEffect, createContext } from 'react'
+import { useEffect, useRef } from 'react'
 import { useParams } from 'react-router-dom'
 import { SocketMessage, sendSocketMessage, requestConvoList } from '../../functions_and_classes/messageFunctionsAndClasses'
 import { ChatContext } from '../../context/ChatContext'
@@ -11,31 +11,33 @@ import ChatComponent from '../../components/ChatComponent'
 const ChatPage = () => {
     const params = useParams()
     //initialize web socket 
-    const ws = new WebSocket(`ws://localhost:3000?username=${params.username}`);
+    let ws = new WebSocket(`ws://localhost:3000?username=${params.username}`);
+    console.log('runing')
+    const prevUsername = useRef<string | undefined>(undefined);
 
     useEffect(() => {
         // Initialize web socket 
-        const ws = new WebSocket(`ws://localhost:3000?username=${params.username}`);
 
-        ws.addEventListener('open', () => {
-            console.log('Connected to server');
-        });
+        if (prevUsername.current && prevUsername.current !== params.username ) {
+            ws.close()
+            ws = new WebSocket(`ws://localhost:3000?username=${params.username}`);
+            ws.addEventListener('close', () => {
+                console.log('Disconnected from server');
+            });
 
-        ws.addEventListener('close', () => {
-            console.log('Disconnected from server');
-        });
+            ws.addEventListener('error', (error) => {
+                console.error('WebSocket error:', error);
+            });
+            prevUsername.current = params.username
+            // Cleanup function
+            return () => {
+                ws.close();
+                console.log('WebSocket connection closed');
+            };
+        }
 
-        ws.addEventListener('error', (error) => {
-            console.error('WebSocket error:', error);
-        });
-
-        // Cleanup function
-        return () => {
-            ws.close();
-            console.log('WebSocket connection closed');
-        };
     }, [params.username]);
-    
+
     return (
         <>
             <h2 className='text-[1.5rem] mb-8'>Welcome to Chat Socket!</h2>

@@ -1,9 +1,10 @@
 import { useContext, useEffect, useState, useRef, useMemo } from "react"
 import { ChatContext } from "../../context/ChatContext"
-import { useParams } from "react-router-dom"
+import { useParams, useSearchParams } from "react-router-dom"
 import { SendChatHistory, SocketMessage, StoredMessage, requestMessageHistory, sendSocketMessage, confirmMessage, receiveMessage } from "../../functions_and_classes/messageFunctionsAndClasses"
 import { formatTime } from "../../functions_and_classes/messageFunctionsAndClasses"
 import useMessageUpdate from "../../hooks/useMessageUpdate"
+import ChatBubble from "../minicomponents/chatbubble"
 
 interface Props {
     chattingWith: string | undefined,
@@ -13,36 +14,38 @@ interface Props {
 export default function ChatSection(props: Props) {
     const [messages, setMessages] = useState<StoredMessage[] | undefined>(undefined)
     const context = useContext(ChatContext)
+    const [searchParams] = useSearchParams()
     const params = useParams()
     const ws: WebSocket | undefined = context?.ws
     const [latestMessage, setLatestMessage] = useState<StoredMessage | undefined>(undefined)
     const [showMessages] = useMessageUpdate(messages, latestMessage)
     const prevProps = useRef<string | undefined>(undefined)
 
-
-
+    ws?.addEventListener('open', () => {
+        requestMessageHistory(ws, props.convoID, params.username)
+    });
 
     useEffect(() => {
-        //only request list of convo if props change
-        if (ws?.readyState) {
+        //only request list of convo if props change and prevProps initialized
+
+        if (ws?.readyState && prevProps.current !== props.chattingWith) {
             requestMessageHistory(ws, props.convoID, params.username)
             setLatestMessage(undefined)
         }
         prevProps.current = props.chattingWith;
     }, [props])
 
+
     //event listener to receive message history
     ws?.addEventListener('message', (message) => {
-        const parsedMessage: SendChatHistory | confirmMessage = JSON.parse(message.data)
-        console.log(parsedMessage.type)
+        const parsedMessage: any = JSON.parse(message.data)
         if (parsedMessage.type === 'chatHistory') {
             //set messages as chat history
-            const prevChattingWith = prevProps.current;
-            if (prevChattingWith && prevChattingWith !== props.chattingWith) {
-                setMessages(parsedMessage.data)
-            }
+            setMessages(_prev => parsedMessage.data)
+
         }
-        if (parsedMessage.type === 'confirmMessage') {
+        
+        else if (parsedMessage.type === 'confirmMessage') {
             if (parsedMessage.id === latestMessage?.id) {
                 //if ids match, and success:
                 if (parsedMessage.success) {
@@ -62,18 +65,21 @@ export default function ChatSection(props: Props) {
                 }
             }
         }
+
+        else if (parsedMessage.type === 'confirmMessage'){
+
+        }
     })
 
     //separate event listener for incoming message
     ws?.addEventListener('message', (message) => {
         const parsedMessage: SocketMessage = JSON.parse(message.data)
-        console.log(parsedMessage.type)
+
         if (parsedMessage.type === 'incoming') {
             //transform socketMessage to storedMessage
             const newMessage: StoredMessage = receiveMessage(parsedMessage)
             setLatestMessage(newMessage)
         }
-
     })
 
     const submitMessage = (e: React.FormEvent<HTMLFormElement>) => {
@@ -90,31 +96,15 @@ export default function ChatSection(props: Props) {
 
     return (
 
-        <div className='text-[1rem] w-[60%] h-[70vh] flex flex-col justify-end px-4 border-l border-slate-600 ml-2 min-h[500px]'>
+        <div className='text-[1rem] w-[60%] h-[70vh] flex flex-col justify-end px-2 border-l border-slate-600 ml-2 min-h[500px]'>
             <div className='flex justify-center mb-4'>
                 <p className='mr-4 text-[1.2rem]'>{`Chatting With: ${props.chattingWith}`}</p>
             </div>
             <ul id='message-container' className='flex flex-col h-full border-b border-slate-600 justify-end overflow-y-scroll'>
                 {
-                    showMessages?.map(message => {
-                        if (message.from === params.username) {
-                            return (
-                                <li id='message-right' className='mb-4 text-right self-end w-[65%]'>
-                                    <p id='message' className=''>{message.message}</p>
-                                    <span id='time-stamp' className='text-[11px]'>{formatTime(message.datetime)}</span>
-                                </li>
-                            )
-                        }
-                        else {
-                            return (
-                                <li id='message-left' className='mb-4 text-left w-[65%]'>
-                                    <p id='message' className='w-[55%]'>{message.message}</p>
-                                    <span id='time-stamp' className='text-[11px]'>{formatTime(message.datetime)}</span>
-                                </li>
-                            )
-
-                        }
-                    })
+                    showMessages?.map(message => (
+                        <ChatBubble  message = {message} />
+                    ))
                 }
             </ul>
             <p id='feedback' className='text-[12px] pt-2'>Someone is typing a message</p>

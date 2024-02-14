@@ -75,6 +75,7 @@ export function requestMessageHistory(ws: WebSocket | undefined, convoId: string
     ws?.send(JSON.stringify(reqMessageHistory))
 
 }
+
 export class StoredMessage {
     datetime: Date | string;
     id: string;
@@ -94,7 +95,8 @@ export class StoredMessage {
             this.message = message
     }
 }
-export function receiveMessage (socketMessage: SocketMessage){
+
+export function receiveMessage(socketMessage: SocketMessage) {
     //socketmessage.username == he who sent the message, socketmessage.recipient === he who receives, he who is logged in
     //this function returns a stored message given a socket message
     let receivedMessage = new StoredMessage(
@@ -126,9 +128,63 @@ export function formatTime(timeStr: string | Date): string {
 
     return formattedTime;
 }
+
 export type confirmMessage = {
     type: 'confirmMessage',
     id: string | undefined,
     username: string | undefined,
     success: boolean
+}
+
+export class deleteRequest {
+    type: 'deleteRequest';
+    username: string;
+    messageId: string;
+    convoId: string;
+    constructor(username: string, messageId: string, convoId: string) {
+        this.type = 'deleteRequest',
+            this.username = username,
+            this.messageId = messageId,
+            this.convoId = convoId
+    }
+}
+
+export function sendDeleteRequest(info: messageExtraInfo, message: StoredMessage) {
+    const DeleteRequest = new deleteRequest(info.username, message.id, info.convoId)
+    info.ws.send(JSON.stringify(DeleteRequest))
+}
+
+export type messageExtraInfo = { username: string, convoId: string, ws: WebSocket }
+
+//functions and options for message pop ups
+
+type MessageAction = {
+    name: string;
+    functionNeedsConvoInfo: boolean;
+    // Define the function signature based on the parameters used in the object
+    // This represents a function that takes a StoredMessage and optional messageExtraInfo
+    function: (message: StoredMessage, convoInfo?: messageExtraInfo) => void;
+};
+
+type MessageOptions = {
+    [key: string]: MessageAction;
+};
+
+export const messageOptions: MessageOptions = {
+    copy: {
+        name: 'Copy Message',
+        functionNeedsConvoInfo: false,
+        function: (message: StoredMessage) => {
+            navigator.clipboard.writeText(message.message).then(() => {
+                alert('Text Copied')
+            }).catch(_err => alert('Could not copy text!'))
+        }
+    },
+    delete: {
+        name: 'Delete',
+        functionNeedsConvoInfo: true,
+        function: (message: StoredMessage, convoInfo?: messageExtraInfo) => {
+            sendDeleteRequest(convoInfo as messageExtraInfo, message)
+        }
+    },
 }
