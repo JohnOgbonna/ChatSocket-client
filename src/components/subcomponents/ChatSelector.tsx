@@ -10,6 +10,7 @@ interface Props {
         chattingWith: string;
         convoID: string;
     } | undefined>>
+    convo : {chattingWith : string, convoID: string} | undefined
 }
 
 export default function ChatSelector(props: Props) {
@@ -39,19 +40,23 @@ export default function ChatSelector(props: Props) {
         })
         updateQueryStringValueWithoutNavigation('chatId', convo.convoId)
         updateQueryStringValueWithoutNavigation('chattingWith', convo.speakingWith)
-        
-       
-
     }
+
+    const animation = `duration-500 transition-all`
+    const defaultSelectorStyles = `flex justify-center mb-4 w-[30%] pt-4 ${animation}`
+    const fullSelectorStyles = `w-full ${animation}`
+    const defaultListStyles = `w-full text-left mb-4 border-b border-slate-600`
+    const fullListStyles = `border-0 max-w-[600px]`
     return (
-        <div className="flex justify-center mb-4 w-[30%] pt-4">
+        <div className={`${defaultSelectorStyles} ${!props.convo?.chattingWith ? fullSelectorStyles : ''}`}>
             <ul className="grid-flow-row w-full">
                 {
                     //map messages to display and select to change convo using onclick function provided
                     messages.map(conversation => (
                         <li
                             onClick={() => setConvo(conversation)}
-                            className={`w-full text-left mb-4 border-b border-slate-600`}
+                            className={`${defaultListStyles} ${!props.convo?.chattingWith? fullListStyles : ''}`}
+                            key={conversation.convoId}
                         >
                             <h3>{conversation.speakingWith}</h3>
                             <p className="text-[12px]">{conversation.lastMessage}</p>

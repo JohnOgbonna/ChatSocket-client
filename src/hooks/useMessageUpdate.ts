@@ -1,11 +1,12 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { StoredMessage } from "../functions_and_classes/messageFunctionsAndClasses";
+import { useParams } from "react-router-dom";
 
 //purpose of this hook is to return an array of stored messages to map, and dynamically update the messages
-export default function useMessageUpdate(messages: StoredMessage[] | undefined, latestMessage: StoredMessage | undefined) {
+export default function useMessageUpdate(messages: StoredMessage[] | undefined, latestMessage: StoredMessage | undefined, deleteMessage: string | undefined) {
 
     const [showMessages, setShowMessages] = useState<StoredMessage[] | undefined>(messages)
-
+    const prevDelete = useRef<string | undefined>(undefined);
     useEffect(() => {
         //check if messages and latest message exist
         if (latestMessage) {
@@ -25,7 +26,7 @@ export default function useMessageUpdate(messages: StoredMessage[] | undefined, 
                     if (showMessagesPlaceholder) {
                         showMessagesPlaceholder[index] = latestMessage
                     }
-                    setShowMessages(_prev=>showMessagesPlaceholder)
+                    setShowMessages(_prev => showMessagesPlaceholder)
                 }
             }
             if (latestMessage.active) {
@@ -38,17 +39,19 @@ export default function useMessageUpdate(messages: StoredMessage[] | undefined, 
                     if (showMessagesPlaceholder) {
                         showMessagesPlaceholder[index] = latestMessage
                     }
-                    setShowMessages(_prev=>showMessagesPlaceholder)
+                    setShowMessages(_prev => showMessagesPlaceholder)
                 }
-            }
-            if(latestMessage.recipient){
-                // add message right away if received message
-                setShowMessages(prev=>[...prev || [], latestMessage])
             }
         }
         else {
             setShowMessages(messages)
         }
+        if (deleteMessage && prevDelete.current !== deleteMessage) {
+            const placeholder = showMessages?.filter(message => message.id !== deleteMessage)
+            setShowMessages(_prev => placeholder)
+            prevDelete.current = deleteMessage
+        }
+
 
     }, [messages, latestMessage])
     return [showMessages]

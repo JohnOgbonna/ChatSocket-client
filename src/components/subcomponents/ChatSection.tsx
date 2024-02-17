@@ -2,9 +2,9 @@ import { useContext, useEffect, useState, useRef, useMemo } from "react"
 import { ChatContext } from "../../context/ChatContext"
 import { useParams, useSearchParams } from "react-router-dom"
 import { SendChatHistory, SocketMessage, StoredMessage, requestMessageHistory, sendSocketMessage, confirmMessage, receiveMessage } from "../../functions_and_classes/messageFunctionsAndClasses"
-import { formatTime } from "../../functions_and_classes/messageFunctionsAndClasses"
 import useMessageUpdate from "../../hooks/useMessageUpdate"
 import ChatBubble from "../minicomponents/chatbubble"
+import { parse } from "dotenv"
 
 interface Props {
     chattingWith: string | undefined,
@@ -14,12 +14,13 @@ interface Props {
 export default function ChatSection(props: Props) {
     const [messages, setMessages] = useState<StoredMessage[] | undefined>(undefined)
     const context = useContext(ChatContext)
-    const [searchParams] = useSearchParams()
     const params = useParams()
     const ws: WebSocket | undefined = context?.ws
     const [latestMessage, setLatestMessage] = useState<StoredMessage | undefined>(undefined)
-    const [showMessages] = useMessageUpdate(messages, latestMessage)
+    const [deleteMessage, setDeleteMessage] = useState<string | undefined>(undefined)
+    const [showMessages] = useMessageUpdate(messages, latestMessage, deleteMessage)
     const prevProps = useRef<string | undefined>(undefined)
+  
 
     ws?.addEventListener('open', () => {
         requestMessageHistory(ws, props.convoID, params.username)
@@ -28,7 +29,7 @@ export default function ChatSection(props: Props) {
     useEffect(() => {
         //only request list of convo if props change and prevProps initialized
 
-        if (ws?.readyState && prevProps.current !== props.chattingWith) {
+        if ((ws?.readyState && prevProps.current !== props.chattingWith )&& props.chattingWith) {
             requestMessageHistory(ws, props.convoID, params.username)
             setLatestMessage(undefined)
         }
@@ -44,7 +45,7 @@ export default function ChatSection(props: Props) {
             setMessages(_prev => parsedMessage.data)
 
         }
-        
+
         else if (parsedMessage.type === 'confirmMessage') {
             if (parsedMessage.id === latestMessage?.id) {
                 //if ids match, and success:
@@ -66,8 +67,8 @@ export default function ChatSection(props: Props) {
             }
         }
 
-        else if (parsedMessage.type === 'confirmMessage'){
-
+        else if (parsedMessage.type === 'deleteConfirmation') {
+            setDeleteMessage(parsedMessage.messageId)
         }
     })
 
@@ -75,7 +76,7 @@ export default function ChatSection(props: Props) {
     ws?.addEventListener('message', (message) => {
         const parsedMessage: SocketMessage = JSON.parse(message.data)
 
-        if (parsedMessage.type === 'incoming') {
+        if (parsedMessage.type === 'incoming' && parsedMessage.username === props.chattingWith) {
             //transform socketMessage to storedMessage
             const newMessage: StoredMessage = receiveMessage(parsedMessage)
             setLatestMessage(newMessage)
@@ -91,19 +92,23 @@ export default function ChatSection(props: Props) {
             const newMessage: StoredMessage | undefined = sendSocketMessage(ws, messageInput, 'direct', params.username, props.chattingWith)
             setLatestMessage(_prev => newMessage)
         }
-
+      form.reset()
     }
 
-    return (
+    const chatSectionDefaultStyle = `text-[1rem] w-[60%] h-[70vh] flex flex-col justify-end px-2 border-l border-slate-600 ml-2 min-h[500px]`
+    const chatSectionClosedStyle = `max-w-[30%] overflow-hidden px-0 mx-0 border-0 border-l-0`
 
-        <div className='text-[1rem] w-[60%] h-[70vh] flex flex-col justify-end px-2 border-l border-slate-600 ml-2 min-h[500px]'>
+
+    return (
+        props.chattingWith ? 
+        <div className={`${chatSectionDefaultStyle} ${!props.chattingWith ? chatSectionClosedStyle : ''}`}>
             <div className='flex justify-center mb-4'>
                 <p className='mr-4 text-[1.2rem]'>{`Chatting With: ${props.chattingWith}`}</p>
             </div>
             <ul id='message-container' className='flex flex-col h-full border-b border-slate-600 justify-end overflow-y-scroll'>
                 {
                     showMessages?.map(message => (
-                        <ChatBubble  message = {message} />
+                        <ChatBubble message={message} convoId={props.convoID as string} key={message.id}/>
                     ))
                 }
             </ul>
@@ -114,5 +119,9 @@ export default function ChatSection(props: Props) {
             </form>
 
         </div>
+    : 
+    <div className={`w-[50%] flex flex-col justify-center h-[70vh]`}>
+        <p>No Chat Selected</p>
+    </div>
     )
 }

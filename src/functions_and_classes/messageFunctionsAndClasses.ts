@@ -85,7 +85,7 @@ export class StoredMessage {
     message: string;
     active?: boolean | undefined;
     failed?: boolean;
-    recipient?: boolean
+    incoming?: boolean
     constructor(datetime: Date, id: string, to: string | undefined, from: string | undefined, enabled: [string | undefined, string | undefined], message: string) {
         this.datetime = datetime
         this.id = id,
@@ -107,7 +107,7 @@ export function receiveMessage(socketMessage: SocketMessage) {
         [socketMessage.username, socketMessage.recipient],
         socketMessage.message
     )
-    receivedMessage.recipient = true
+    receivedMessage.incoming = true
     return receivedMessage
 }
 
@@ -150,7 +150,9 @@ export class deleteRequest {
 }
 
 export function sendDeleteRequest(info: messageExtraInfo, message: StoredMessage) {
+    console.log(message)
     const DeleteRequest = new deleteRequest(info.username, message.id, info.convoId)
+    console.log('running')
     info.ws.send(JSON.stringify(DeleteRequest))
 }
 
@@ -184,6 +186,7 @@ export const messageOptions: MessageOptions = {
         name: 'Delete',
         functionNeedsConvoInfo: true,
         function: (message: StoredMessage, convoInfo?: messageExtraInfo) => {
+            console.log(convoInfo)
             sendDeleteRequest(convoInfo as messageExtraInfo, message)
         }
     },
