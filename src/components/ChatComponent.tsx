@@ -23,7 +23,7 @@ export default function ChatComponent() {
         <div className="flex">
             {/* //set convo is used to change who is being chatted with, this provided when the connection is established, and conversation names are listed, the onclick function sets the state using set convo */}
             <ChatSelector setConvo={setConvo} convo = {convo}/>
-            <ChatSection chattingWith={convo?.chattingWith} convoID={convo?.convoID} />
+            <ChatSection chattingWith={convo?.chattingWith} convoID={convo?.convoID} setConvo={setConvo}/>
         </div>
     )
 }

@@ -150,9 +150,7 @@ export class deleteRequest {
 }
 
 export function sendDeleteRequest(info: messageExtraInfo, message: StoredMessage) {
-    console.log(message)
     const DeleteRequest = new deleteRequest(info.username, message.id, info.convoId)
-    console.log('running')
     info.ws.send(JSON.stringify(DeleteRequest))
 }
 
@@ -190,4 +188,65 @@ export const messageOptions: MessageOptions = {
             sendDeleteRequest(convoInfo as messageExtraInfo, message)
         }
     },
+}
+
+class onlineUserListRequest {
+    ws: WebSocket;
+    username: string;
+    type: 'onlineUserListRequest';
+    constructor(ws: WebSocket, username: string) {
+        this.ws = ws,
+            this.username = username
+        this.type = 'onlineUserListRequest';
+    }
+}
+
+export const requestOnlineUserList = (ws: WebSocket, username: string) => {
+    const userListRequest = new onlineUserListRequest(ws, username)
+    if (ws.readyState) {
+        ws.send(JSON.stringify(userListRequest))
+    }
+}
+
+export type connectedUser = {
+    id: string
+    username: string;
+    ws?: WebSocket[];
+    dateJoined: Date
+    online?: boolean
+}
+
+export type onlineUserListResponse = {
+    type: 'onlineUserList'
+    data: connectedUser[]
+}
+
+export const chatSelectorSections = [
+    {
+        name: 'Conversations'
+    },
+    {
+        name: 'Search'
+    }
+]
+
+export class SearchUserRequest {
+    type: 'searchUserRequest';
+    username: string;
+    searchkey: string;
+    constructor(username: string, searchkey: string){
+        this.type = 'searchUserRequest',
+        this.username = username,
+        this.searchkey = searchkey
+    }
+
+}
+
+export const submitSearch = (ws: WebSocket, username: string, searchKey: string) => {
+    //construct new submit search request
+    const searchUserRequest = new SearchUserRequest(username, searchKey)
+    //send with ws
+    if(ws && ws.readyState){
+        ws.send(JSON.stringify(searchUserRequest))
+    }
 }

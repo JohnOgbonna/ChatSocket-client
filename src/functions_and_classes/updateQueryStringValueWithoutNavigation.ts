@@ -32,3 +32,12 @@ export function updateQueryStringValueWithoutNavigation(
   // the router from triggering the loader.
   window.history.replaceState(null, '', newUrl)
 }
+export function deleteQueryStringValueWithoutNavigation(queryKeys: string[]){
+  const currentSearchParams = new URLSearchParams(window.location.search)
+  queryKeys.forEach(key=> currentSearchParams.delete(key))
+  const newUrl = [window.location.pathname, currentSearchParams.toString()]
+    .filter(Boolean)
+    .join('?')
+    window.history.replaceState(null, '', newUrl)
+
+}
