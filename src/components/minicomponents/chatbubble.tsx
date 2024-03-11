@@ -60,7 +60,7 @@ export default function ChatBubble(props: Props) {
     const [popup, setPopup] = useState<StoredMessage | undefined>(undefined)
 
     const params = useParams()
-    const commonBubbleStyles = `${popup ? 'mb-2' : 'mb-6'} max-w-[65%] bg-cyan-600 rounded-t-lg px-2 py-1`
+    const commonBubbleStyles = `${popup ? 'mb-2' : 'mb-6'} max-w-[65%] bg-cyan-600 rounded-t-lg px-2 py-1 sm:text-[12px]`
     //message type based on sent or received, same for message classname
     const messageType = props.message.from === params.username ? 'sent' : 'received'
     const messageClassName = messageType === 'sent' ? ` text-right self-end ${commonBubbleStyles}  rounded-bl-lg` : `text-left ${commonBubbleStyles} rounded-br-lg self-start`

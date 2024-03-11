@@ -1,13 +1,13 @@
-import { useContext, useEffect, useState } from "react"
-import { ChatContext } from "../context/ChatContext";
+import { useEffect, useState } from "react"
 import ChatSelector from "./subcomponents/ChatSelector";
 import ChatSection from "./subcomponents/ChatSection";
-import useLocalStorage from "../hooks/useLocalStorage";
 import { useSearchParams } from "react-router-dom";
+import { deleteQueryStringValueWithoutNavigation } from "../functions_and_classes/updateQueryStringValueWithoutNavigation";
 
 
 
 export default function ChatComponent() {
+    
     const [searchParams] = useSearchParams()
     const convoID = searchParams.get('chatId') as string
 
@@ -18,6 +18,14 @@ export default function ChatComponent() {
     } : undefined
 
     const [convo, setConvo] = useState<{ chattingWith: string, convoID: string } | undefined>(convoID ? urlConvo : undefined)
+
+    useEffect(()=>{
+        //remove search param on dismount
+        if(convo && convo.chattingWith){
+            deleteQueryStringValueWithoutNavigation(['search'])
+        }
+    },[convo])
+
 
     return (
         <div className="flex">

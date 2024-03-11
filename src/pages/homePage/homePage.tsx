@@ -1,8 +1,8 @@
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect } from "react"
 import '../pageStyles.css'
 import './homeStyles.css'
 import { useNavigate } from "react-router-dom"
-import { handleSubmit, inputs, fields, handleFieldChange } from "../../functions_and_classes/userFunctionsAndClasses"
+import { login, inputs, fields, handleFieldChange } from "../../functions_and_classes/userFunctionsAndClasses"
 
 const modeOptions = ['Register', 'Login']
 
@@ -39,12 +39,29 @@ export default function HomePage() {
 
     }, [fields]);
 
-    const navigateToChat = () => { navigate(`/chat/${fields.username}`) }
+    useEffect(() => {
+        if (credentialsAccepted) {
+            if (mode === 'Login') {
+                navigate(`/chat/${fields.username}`)
+            }
+            else setMode(_prev => 'Login')
+        }
+    }, [credentialsAccepted])
+
+    async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+        e.preventDefault()
+        await login(e, mode, validationError, acceptCredentials)
+
+        if (mode === 'Login' && credentialsAccepted) {
+            navigate(`/chat/${fields.username}`)
+        }
+    }
+
 
     return (
         <div>
             <h2 className={`text-[1.5rem] mb-4`}>Welcome!</h2>
-            <p>Login or Sign-Up to Get Started!</p>
+            <p className={`mt-3`}>Login or Register to Get Started!</p>
             <ul className={`flex justify-center`}>
                 {
                     modeOptions.map((modeOption, index) => (
@@ -57,8 +74,9 @@ export default function HomePage() {
                     ))
                 }
             </ul>
+            {credentialsAccepted && mode === 'Login' && <p className={`text-red-700`}>Successfully Registered, Login Now!</p>}
             <form className="flex flex-col items-center mt-8 text-[1.2rem] mb-4"
-                onSubmit={(e) => handleSubmit(e, mode, validationError, acceptCredentials)}
+                onSubmit={(e) => handleSubmit(e)}
             >
                 {
                     Object.keys(inputs).map(input => {
@@ -68,7 +86,12 @@ export default function HomePage() {
                                 <input
                                     type="text" className="w-full px-2 h-[1.8rem] max-w-[400px] text-[1rem] "
                                     id={field.id}
-                                    onChange={(e) => handleFieldChange(e, field.id as "username" | "password", fields, setFields)}
+                                    onChange={(e) => {
+                                        handleFieldChange(e, field.id as "username" | "password", fields, setFields)
+                                        if(credentialsAccepted){
+                                            acceptCredentials(false)
+                                        }
+                                    }}
                                 />
                                 <label htmlFor={field.id}
                                     className={`text-[1rem] mb-4 `}
@@ -79,15 +102,17 @@ export default function HomePage() {
                         )
                     })
                 }
-                {mode === 'Register' && validationError.username && <p className="text-red-600 mt-4">Username must be 4 or more characters, alphanumeric, and no spaces</p>}
-                {mode === 'Register' && validationError.password && <p className="text-red-600 mt-4">Password must be 4 or more characters, and no spaces</p>}
+                {mode === 'Register' && validationError.username && <p className="text-red-600 mt-4 sm:text-[1rem]">Username must be 4 or more characters, alphanumeric, and no spaces</p>}
+                {mode === 'Register' && validationError.password && <p className="text-red-600 mt-4 sm:text-[1rem]">Password must be 4 or more characters, and no spaces</p>}
 
 
-                {((!validationError.username && !validationError.password) || mode === 'Login') && <button type="submit"
+                {/* // Show button when no validation error and registering or when mode is login and credentials not yet accepted */}
+                {((!validationError.username && !validationError.password && mode === 'Register') || mode === 'Login') && <button type="submit"
                     className="border border-white border-solid rounded-md p-1 text-[1.2rem] mt-4"
                 >
                     {mode}</button>
                 }
+
             </form>
         </div>
     )

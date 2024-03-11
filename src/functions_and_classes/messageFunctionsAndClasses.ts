@@ -1,6 +1,5 @@
 import { v4 as uuidv4 } from 'uuid';
 
-
 export class SocketMessage {
     id: string;
     type: string;
@@ -38,6 +37,7 @@ export class DisplayConvo {
     speakingWith: string;
     lastMessage: string;
     convoId: string;
+    lastMessageTime?: string | Date
     constructor(speakingWith: string, lastMessage: string, convoId: string) {
         this.speakingWith = speakingWith,
             this.lastMessage = lastMessage,
@@ -72,8 +72,12 @@ export class messageHistoryReq {
 
 export function requestMessageHistory(ws: WebSocket | undefined, convoId: string | undefined, username: string | undefined) {
     const reqMessageHistory = new messageHistoryReq(username, convoId)
-    ws?.send(JSON.stringify(reqMessageHistory))
-
+    try {
+        ws?.send(JSON.stringify(reqMessageHistory))
+    }
+    catch (err) {
+        console.log(err)
+    }
 }
 
 export class StoredMessage {
@@ -174,7 +178,7 @@ export const messageOptions: MessageOptions = {
     copy: {
         name: 'Copy Message',
         functionNeedsConvoInfo: false,
-        function: (message: StoredMessage) => {
+        function: function (message: StoredMessage) {
             navigator.clipboard.writeText(message.message).then(() => {
                 alert('Text Copied')
             }).catch(_err => alert('Could not copy text!'))
@@ -183,7 +187,7 @@ export const messageOptions: MessageOptions = {
     delete: {
         name: 'Delete',
         functionNeedsConvoInfo: true,
-        function: (message: StoredMessage, convoInfo?: messageExtraInfo) => {
+        function: function (message: StoredMessage, convoInfo?: messageExtraInfo) {
             console.log(convoInfo)
             sendDeleteRequest(convoInfo as messageExtraInfo, message)
         }
@@ -234,19 +238,119 @@ export class SearchUserRequest {
     type: 'searchUserRequest';
     username: string;
     searchkey: string;
-    constructor(username: string, searchkey: string){
+    constructor(username: string, searchkey: string) {
         this.type = 'searchUserRequest',
-        this.username = username,
-        this.searchkey = searchkey
+            this.username = username,
+            this.searchkey = searchkey
     }
 
 }
 
-export const submitSearch = (ws: WebSocket, username: string, searchKey: string) => {
+export const submitSearch = (ws: globalThis.WebSocket | undefined, username: string, searchKey: string) => {
     //construct new submit search request
     const searchUserRequest = new SearchUserRequest(username, searchKey)
     //send with ws
-    if(ws && ws.readyState){
+    if (ws && ws.readyState) {
         ws.send(JSON.stringify(searchUserRequest))
+    }
+}
+
+export type searchUserResponse = {
+    type: 'userSearchResults',
+    data: connectedUser[]
+};
+
+export class startConvoRequest {
+    type: 'startConvoReq'
+    username: string
+    chattingWith: string
+
+    constructor(username: string, chattingWith: string) {
+        this.type = 'startConvoReq',
+            this.username = username,
+            this.chattingWith = chattingWith
+    }
+}
+
+export function sendStartConvoRequest(ws: WebSocket | globalThis.WebSocket, username: string, chattingWith: string) {
+    const request = new startConvoRequest(username, chattingWith)
+    ws.send(JSON.stringify(request))
+}
+
+export type startConvoRes = {
+    type: 'startConvoResponse'
+    chatId: string
+    chattingWith: string
+}
+
+export class sendTypingIndicator {
+    type: 'typingIndicator'
+    username: string
+    chattingWith: string
+    convoId: string
+    typing: boolean
+    constructor(username: string, chattingWith: string, convoId: string, typing: boolean) {
+        this.type = 'typingIndicator'
+        this.chattingWith = chattingWith
+        this.username = username
+        this.convoId = convoId
+        this.typing = typing
+    }
+}
+
+export type currentlyTyping = {
+    conversantTyping: boolean;
+    currentlyTyping: boolean;
+}
+
+export function onMessageInputChange(e: React.FormEvent<HTMLInputElement>, ws: WebSocket, typing: currentlyTyping, setTyping: React.Dispatch<React.SetStateAction<currentlyTyping>>, convoInfo: { convoId: string, chattingWith: string }, username: string) {
+    const input = e.currentTarget as HTMLInputElement; // Cast to HTMLFormElement
+
+    let typingIndicator: sendTypingIndicator
+    if (input.value) {
+        //send typing indicator
+        typingIndicator = new sendTypingIndicator(username, convoInfo.chattingWith, convoInfo.convoId, true)
+        if (!typing.currentlyTyping) {
+            setTyping({ ...typing, currentlyTyping: true })
+        }
+    }
+    else {
+        //if field is empty, not typing
+        typingIndicator = new sendTypingIndicator(username, convoInfo.chattingWith, convoInfo.convoId, false)
+        if (typing.currentlyTyping) {
+            setTyping({ ...typing, currentlyTyping: false })
+        }
+    }
+    ws.send(JSON.stringify(typingIndicator))
+
+}
+
+export type typingIndicatorRes = {
+    type: 'typingIndicatorRes'
+    convoId: string
+    typing: boolean
+}
+
+export function handleTypingIndicator(messengerTyping: boolean, setMessengerTyping: React.Dispatch<React.SetStateAction<boolean>>, typingIndicatorRes: typingIndicatorRes) {
+    const { typing, convoId: indicatorConvoId } = typingIndicatorRes
+    const currentSearchParams = new URLSearchParams(window.location.search)
+    //if typing indicator message and front end status are not aligned and user is in the right chat..
+    if ((typing !== messengerTyping) && (indicatorConvoId === currentSearchParams.get('chatId'))) {
+        setMessengerTyping(typing)
+    }
+}
+
+export function messageNotification(message: SocketMessage, setPopupMessage: React.Dispatch<React.SetStateAction<string>>,) {
+    const currentSearchParams = new URLSearchParams(window.location.search)
+    if (currentSearchParams.get('chattingWith') && currentSearchParams.get('chattingWith') !== message.username) {
+        const notificationMessage = `${message.username} sent a message: ${message.message}`
+        setPopupMessage(_prevMessage => notificationMessage)
+    }
+}
+
+export function clearTypingIndicator(ws: globalThis.WebSocket, username: string, convoInfo: { convoId: string, chattingWith: string }) {
+    const typingIndicator = new sendTypingIndicator(username, convoInfo.chattingWith, convoInfo.convoId, false)
+    if (ws && ws.readyState) {
+        ws.send(JSON.stringify(typingIndicator))
     }
 }

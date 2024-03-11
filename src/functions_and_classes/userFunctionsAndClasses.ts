@@ -2,18 +2,22 @@ import axios from "axios"
 
 const link = 'http://localhost:3000/check/register-login';
 
-export const handleSubmit = (e: any, mode: "Register" | "Login", validationError: { username: boolean, password: boolean }, acceptCredentials: React.Dispatch<React.SetStateAction<boolean>>) => {
-    e.preventDefault()
-    if (e.target.username.value && !validationError.username && !validationError.password || mode === 'Login') {
-        const body = { username: e.target.username.value, password: e.target.password.value, mode: mode }
-        axios.post(link, body)
+
+export const login = async (e: React.FormEvent<HTMLFormElement>, mode: "Register" | "Login", validationError: { username: boolean, password: boolean }, acceptCredentials: React.Dispatch<React.SetStateAction<boolean>>) => {
+    const form = e.currentTarget as HTMLFormElement; // Cast to HTMLFormElement
+    const usernameVal = form.username.value;
+    const passwordVal = form.password.value;
+
+    if ((usernameVal && !validationError.username && !validationError.password) || mode === 'Login') {
+        const body = { username: usernameVal, password: passwordVal, mode: mode }
+        await axios.post(link, body)
             .then(res => {
                 alert(res.data)
                 acceptCredentials(true)
             })
             .catch((err) => {
                 // display error in an alert
-                if (err.response.data.type = 'userExists') alert(err.response.data.message)
+                if (err.response && err.response.data) alert(err.response.data.message)
                 else alert('Error, Could Not Make User')
             })
     }
@@ -56,4 +60,19 @@ export const handleFieldChange = (e: React.ChangeEvent<HTMLInputElement>, field:
         [field]: e.target.value
     }
     setFields(placeholder)
+}
+
+export class sendLogoutRequest {
+    type: 'logoutRequest'
+    username: string
+    constructor(username: string) {
+        this.type = 'logoutRequest'
+        this.username = username
+    }
+}
+
+export const logout = (ws: WebSocket, username: string) => {
+    const logoutRequest = new sendLogoutRequest(username)
+    ws.send(JSON.stringify(logoutRequest))
+    ws.close()
 }
